@@ -1,53 +1,47 @@
 var express = require('express');
-var fs      = require('fs');
+var fs = require('fs');
 var request = require('request');
 var cheerio = require('cheerio');
-var app     = express();
+var app = express();
 
-app.get('/scrape', function(req, res){
-  // Let's scrape Anchorman 2
+app.get('/scrape', async (req, res) => {
+
   res.setHeader('Content-Type', 'text/html');
-  url = 'https://www.imdb.com/title/tt6673768';
+  url = 'http://www.nowgoal.com/sitemap.html';
 
-  request(url, function(error, response, html){
+  links = [];
 
-    if(!error){
+  await request(url, async (error, response, html) => {
+
+    if (!error) {
       var $ = cheerio.load(html);
 
-      var title, release, rating;
-      var json = { title : "", release : "", rating : ""};
+      await $('li').map(function (i, el) {
+        const link = $(this).children().first().next().attr('href');
+        if (link !== undefined) {
+          links.push(link);
+        }
+      }).get().join(' ');
 
-      $('.title_wrapper').filter(function(){
-        var data = $(this);
-        title = data.children().first().text().trim();
-        release = data.children().last().children().last().text().trim();
+      console.log(links[0]);
 
-        json.title = title;
-        json.release = release;
-      })
+      request('http://www.nowgoal.com' + links[0], function (error, response, html) {
 
-      $('.ghost').filter(function(){
-        var data = $(this);
-        console.log(data);
-      })
-
-      $('.ratingValue').filter(function(){
-        var data = $(this);
-        rating = data.text().trim();
-
-        json.rating = rating;
+        if (!error) {
+          var $ = cheerio.load(html);
+          console.log('deu bom');
+        } else {
+          console.log('Error ao fazer o scrape no news');
+        }
+        res.send('deu bom');
       })
 
     } else {
-      console.log('Error ao fazer o scrape');
+      console.log('Error ao fazer o scrape no sitemap');
     }
 
-    fs.writeFile('output.json', JSON.stringify(json, null, 4), function(err){
-      console.log('Arquivo Escrito com sucesso - Por favor checar o arquivo the output.json');
-    })
-
-    res.send('ver o console console!')
   })
+
 })
 
 app.listen('8081')
